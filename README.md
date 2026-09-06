@@ -27,11 +27,10 @@ You only need to do this once, in the repository settings. Pick either option:
 2. Under *Build and deployment*, set **Source** to `Deploy from a branch`.
 3. Choose branch `main` and folder `/ (root)`, then **Save**.
 
-**Option B — deploy with the included workflow**
+**Option B — deploy with the included workflow (no settings needed)**
 
-1. Go to **Settings → Pages**.
-2. Under *Build and deployment*, set **Source** to `GitHub Actions`.
-3. `.github/workflows/pages.yml` then publishes the site on every push to `main`.
+`.github/workflows/pages.yml` runs on every push to `main`. The first run turns
+Pages on by itself and publishes the site; later pushes just republish it.
 
 Either way the site appears at `https://alexanderis1.github.io/CROS-Benchmark/` a minute
 or two later. No custom domain is needed.

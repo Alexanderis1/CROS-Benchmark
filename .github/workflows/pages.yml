@@ -26,6 +26,10 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          # Turns Pages on for the repo the first time this runs, so the site
+          # publishes without anyone changing the repository settings by hand.
+          enablement: true
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
