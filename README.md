@@ -19,21 +19,15 @@ The page is plain HTML, CSS and JavaScript. No build step, no dependencies, no t
 
 ## Turning on GitHub Pages
 
-You only need to do this once, in the repository settings. Pick either option:
-
-**Option A — deploy from a branch (simplest)**
+One click, once, in the repository settings:
 
 1. Go to **Settings → Pages**.
 2. Under *Build and deployment*, set **Source** to `Deploy from a branch`.
 3. Choose branch `main` and folder `/ (root)`, then **Save**.
 
-**Option B — deploy with the included workflow (no settings needed)**
-
-`.github/workflows/pages.yml` runs on every push to `main`. The first run turns
-Pages on by itself and publishes the site; later pushes just republish it.
-
-Either way the site appears at `https://alexanderis1.github.io/CROS-Benchmark/` a minute
-or two later. No custom domain is needed.
+The site appears at `https://alexanderis1.github.io/CROS-Benchmark/` a minute or two
+later, and rebuilds itself on every push to `main`. No custom domain and no build
+workflow are needed — GitHub serves the files as they are.
 
 ## Updating the results
 
