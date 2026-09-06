@@ -10,7 +10,7 @@
  *   time    time spent, normalized index, lower is better
  *   cost    cost, normalized index, lower is better
  */
-window.CROS_DATA = {
+var CROS_DATA = {
   meta: {
     updated: "2026-09-06",
     tasks: 1,

@@ -38,7 +38,7 @@ or two later. No custom domain is needed.
 
 ## Updating the results
 
-Open `assets/data.js` and edit the list. Every number on the page — the charts, the
+Open `assets/data.js` and edit the `CROS_DATA` list. Every number on the page — the charts, the
 leaderboard, the summary tiles and the "what stands out" notes — is read from here.
 
 ```js

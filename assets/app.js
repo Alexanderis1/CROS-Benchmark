@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var DATA = window.CROS_DATA;
+  var DATA = typeof CROS_DATA !== "undefined" ? CROS_DATA : null;
   if (!DATA) return;
 
   var MODELS = DATA.models.slice();
@@ -639,8 +639,10 @@
       var isDark = current() === "dark";
       btn.setAttribute("aria-label", isDark ? "Switch to light theme" : "Switch to dark theme");
       btn.setAttribute("aria-pressed", String(isDark));
-      btn.querySelector(".icon-sun").style.display = isDark ? "none" : "";
-      btn.querySelector(".icon-moon").style.display = isDark ? "" : "none";
+      var sun = /** @type {HTMLElement} */ (btn.querySelector(".icon-sun"));
+      var moon = /** @type {HTMLElement} */ (btn.querySelector(".icon-moon"));
+      if (sun) sun.style.display = isDark ? "none" : "";
+      if (moon) moon.style.display = isDark ? "" : "none";
     }
     btn.addEventListener("click", function () {
       var next = current() === "dark" ? "light" : "dark";
