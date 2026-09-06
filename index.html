@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CROS Benchmark — AI coding models on C, C++ and ROS work</title>
+<meta name="description" content="CROS is a benchmark for AI coding models on short, complex software engineering tasks across C, C++, ROS1/ROS2, robotics, testing and debugging. Scores, time and cost, side by side.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="CROS Benchmark">
+<meta property="og:description" content="AI coding models measured on short, complex C, C++ and ROS engineering tasks — quality, time and cost.">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/styles.css">
+<script>
+  /* Stamp the saved theme before first paint so there is no flash. */
+  try {
+    var saved = localStorage.getItem("cros-theme");
+    if (saved === "light" || saved === "dark") document.documentElement.setAttribute("data-theme", saved);
+  } catch (e) {}
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="./">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <rect x="1" y="12" width="4.5" height="7" rx="1.5" fill="currentColor" opacity="0.35"/>
+        <rect x="7.75" y="7" width="4.5" height="12" rx="1.5" fill="currentColor" opacity="0.65"/>
+        <rect x="14.5" y="1" width="4.5" height="18" rx="1.5" fill="currentColor"/>
+      </svg>
+      <span>CROS Benchmark</span>
+      <span class="brand-sub">C · C++ · ROS</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#scores">Scores</a>
+      <a href="#tradeoffs">Trade-offs</a>
+      <a href="#efficiency">Time &amp; cost</a>
+      <a href="#leaderboard">Leaderboard</a>
+      <a href="#method">Method</a>
+    </nav>
+    <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch theme">
+      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+      </svg>
+      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none">
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>
+      </svg>
+    </button>
+    <a class="icon-btn" href="https://github.com/Alexanderis1/CROS-Benchmark" aria-label="CROS Benchmark on GitHub" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+    </a>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Independent evaluation · Work in progress</p>
+      <h1>How well do AI models handle real C, C++ and ROS engineering?</h1>
+      <p class="lede">
+        CROS scores coding models on short but genuinely hard software engineering tasks —
+        the kind a robotics engineer finishes in under two hours: C and C++ work, ROS1 and
+        ROS2 packages, tests, debugging, and the messy parts of a real repository.
+        Each model is measured three ways: how good the result is, how long it took, and
+        what it cost.
+      </p>
+      <div class="chips">
+        <span class="chip"><span class="dot"></span><span id="meta-status">Preliminary</span></span>
+        <span class="chip"><span id="meta-models">—</span></span>
+        <span class="chip"><span id="meta-tasks">—</span></span>
+        <span class="chip">Updated <span id="meta-updated">—</span></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="section" id="scores">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Quality</p>
+        <h2>CROS score</h2>
+        <p>How complete and correct the delivered work is, graded from 0 to 100. Higher is better.</p>
+      </div>
+      <div class="grid-lead">
+        <div class="card">
+          <div class="card-head">
+            <h3>CROS score by model</h3>
+            <p>All bars start at zero, so the visible gap is the real gap.</p>
+          </div>
+          <div class="chart" id="chart-score"></div>
+          <div class="card-foot">
+            <span>Higher is better · 0–100</span>
+            <a href="#leaderboard">See every value in the table ↓</a>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3>What stands out</h3>
+            <p>Read straight off the current results.</p>
+          </div>
+          <dl class="highlights" id="highlights"></dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="tradeoffs">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Trade-offs</p>
+        <h2>What the score costs you</h2>
+        <p>
+          A high score is only half the story. These two views put quality against what you
+          pay for it — in money and in waiting. The best place to be is the top-left corner.
+        </p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3>Score vs cost</h3>
+            <p>Cost index on a log scale — each step right is roughly 3× more expensive.</p>
+          </div>
+          <div class="chart" id="chart-cost-quality"></div>
+          <div class="card-foot">
+            <span>Top-left is better</span>
+            <a href="#leaderboard">Table ↓</a>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3>Score vs time</h3>
+            <p>Time index, normalized across models so runs are comparable.</p>
+          </div>
+          <div class="chart" id="chart-time-quality"></div>
+          <div class="card-foot">
+            <span>Top-left is better</span>
+            <a href="#leaderboard">Table ↓</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="efficiency">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Efficiency</p>
+        <h2>Time and cost</h2>
+        <p>Both are normalized indices with no unit — they only mean something next to each other. Lower is better in both.</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3>Time spent</h3>
+            <p>Sorted fastest first.</p>
+          </div>
+          <div class="chart" id="chart-time"></div>
+          <div class="card-foot">
+            <span>Lower is better</span>
+            <a href="#leaderboard">Table ↓</a>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3>Cost</h3>
+            <p>Sorted cheapest first.</p>
+          </div>
+          <div class="chart" id="chart-cost"></div>
+          <div class="card-foot">
+            <span>Lower is better</span>
+            <a href="#leaderboard">Table ↓</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="leaderboard">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">All results</p>
+        <h2>Leaderboard</h2>
+        <p>Every number on this page, in one place. Click a column heading to sort.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">CROS benchmark results: score, time index and cost index for each model.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Rank</th>
+              <th scope="col" data-key="name"><button class="sort-btn" type="button">Model <span class="arrow" aria-hidden="true">↓</span></button></th>
+              <th scope="col">Effort</th>
+              <th scope="col" class="num" data-key="score"><button class="sort-btn" type="button">CROS score <span class="arrow" aria-hidden="true">↓</span></button></th>
+              <th scope="col" class="num" data-key="time"><button class="sort-btn" type="button">Time index <span class="arrow" aria-hidden="true">↓</span></button></th>
+              <th scope="col" class="num" data-key="cost"><button class="sort-btn" type="button">Cost index <span class="arrow" aria-hidden="true">↓</span></button></th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body"></tbody>
+        </table>
+      </div>
+      <p class="table-note">
+        Rank is by CROS score and stays fixed when you sort by another column.
+        Score: higher is better. Time and cost: lower is better.
+      </p>
+    </div>
+  </section>
+
+  <section class="section" id="method">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Method</p>
+        <h2>How the benchmark works</h2>
+      </div>
+      <div class="grid-2">
+        <div class="prose">
+          <h3>What the tasks look like</h3>
+          <p>
+            Every task is drawn from real development work and is meant to take a competent
+            engineer under two hours. The suite covers C and C++, ROS1 and ROS2 packages,
+            robotics integration, writing and fixing tests, debugging existing code, and
+            the ordinary workflow around all of it — builds, dependencies, and repository
+            conventions.
+          </p>
+          <h3>The three measures</h3>
+          <ul>
+            <li><strong>CROS score</strong> — the quality of the delivered work, 0 to 100. Higher is better.</li>
+            <li><strong>Time index</strong> — how long the model took, normalized. Lower is better.</li>
+            <li><strong>Cost index</strong> — what the run cost, normalized. Lower is better.</li>
+          </ul>
+          <p>
+            Time and cost are relative indices, not seconds or dollars. They are useful for
+            comparing models with each other, not for predicting a bill.
+          </p>
+        </div>
+        <div class="prose">
+          <h3>Effort settings</h3>
+          <p>
+            Models are run at the reasoning effort listed beside them. A different effort
+            setting moves all three numbers, so the label is part of the result — the same
+            model at a lower effort is a different row, not the same one.
+          </p>
+          <h3>Where this stands</h3>
+          <div class="callout">
+            These are early results: one task, five models, one run each. Treat them as a
+            first signal, not a settled ranking. As tasks are added the scores will move,
+            and this page updates with them.
+          </div>
+          <h3>Reproducing and contributing</h3>
+          <p>
+            The results shown here live in <code>assets/data.js</code> in the repository —
+            one entry per model. Corrections and additional runs are welcome through
+            <a href="https://github.com/Alexanderis1/CROS-Benchmark" rel="noopener">the GitHub repo</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>CROS Benchmark · Last updated <span id="footer-updated">—</span></span>
+    <span>
+      <a href="https://github.com/Alexanderis1/CROS-Benchmark" rel="noopener">Source on GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/Alexanderis1/CROS-Benchmark/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>
+    </span>
+  </div>
+</footer>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
