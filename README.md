@@ -1,8 +1,16 @@
 # CROS-Benchmark
 
 A benchmark for evaluating AI coding models on short (&lt;2h), complex software engineering
-tasks across C, C++, ROS1/ROS2, robotics, testing, debugging, and real-world development
-workflows.
+tasks across C, C++, ROS1/ROS2, robotics, Linux, old codebases, testing, debugging, and
+real-world development workflows.
+
+Two tracks are scored:
+
+- **Execution** — the model does the task. Scored on the quality of the delivered work,
+  the time it took and what it cost.
+- **Planning & codebase analysis** — the model reads an unfamiliar codebase and reviews an
+  implementation plan against it, without writing code. Scored on six metrics: accuracy,
+  hallucination, reasoning, problem solving, codebase understanding and efficacy.
 
 **Results page:** https://alexanderis1.github.io/CROS-Benchmark/
 
@@ -12,7 +20,7 @@ workflows.
 | --- | --- |
 | `index.html` | The results page |
 | `assets/data.js` | **The results themselves — edit this to update the page** |
-| `assets/app.js` | Draws the charts and the table |
+| `assets/app.js` | Draws the charts and the tables |
 | `assets/styles.css` | Styling, light and dark theme |
 
 The page is plain HTML, CSS and JavaScript. No build step, no dependencies, no tracking.
@@ -31,20 +39,39 @@ workflow are needed — GitHub serves the files as they are.
 
 ## Updating the results
 
-Open `assets/data.js` and edit the `CROS_DATA` list. Every number on the page — the charts, the
-leaderboard, the summary tiles and the "what stands out" notes — is read from here.
+Open `assets/data.js` and edit the `CROS_DATA` object. Every number on the page — the charts,
+the leaderboards, the summary tiles and the "what stands out" notes — is read from here.
+There is one list of models per track.
+
+### Execution
 
 ```js
 { id: "gpt-6-astra", name: "GPT 6 Astra", effort: "Max", score: 99, time: 32, cost: 6 },
 ```
 
-- `score` — CROS score, 0 to 100, higher is better
+- `score` — CROS Execution score, 0 to 100, higher is better
 - `time` — normalized time index, lower is better
 - `cost` — normalized cost index, lower is better
 - `effort` — the reasoning effort the run used (it is part of the result)
 
-Also bump `meta.updated` and `meta.tasks`. Adding or removing a model needs no other
-change: the charts and the table resize themselves.
+### Planning & codebase analysis
+
+```js
+{ id: "fable-5-1", name: "Fable 5.1", effort: "Max",
+  points: { accuracy: 21, hallucination: 13, reasoning: 13, problemSolving: 14, codebase: 14, efficacy: 10 } },
+```
+
+- `points` — the points earned on each metric, out of that metric's `weight` in the
+  `planning.metrics` list: 25 for accuracy, 15 for each of the other five, 100 in all
+- The page normalizes every metric to 0–100 (`points ÷ weight × 100`) and adds the raw
+  points up into the CROS Planning score, 0 to 100. There is nothing to compute by hand.
+- `hallucination` is scored as freedom from invented claims: full points means nothing
+  was made up.
+- Use the same `id` for the same model on both tracks, so the planning-vs-execution chart
+  can pair its two runs.
+
+Also bump `meta.updated` and the `tasks` count of the track you added to. Adding or
+removing a model needs no other change: the charts and the tables resize themselves.
 
 ## Previewing locally
 

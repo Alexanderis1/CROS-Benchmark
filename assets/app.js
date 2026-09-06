@@ -2,6 +2,10 @@
    CROS Benchmark — rendering
    Plain SVG, no dependencies. Every chart reads its colors from
    the CSS custom properties, so a theme change just re-renders.
+
+   Two tracks come out of assets/data.js:
+     EXEC  execution runs — score, time, cost
+     PLAN  planning runs  — six graded metrics, normalized here
    ============================================================ */
 (function () {
   "use strict";
@@ -9,7 +13,21 @@
   var DATA = typeof CROS_DATA !== "undefined" ? CROS_DATA : null;
   if (!DATA) return;
 
-  var MODELS = DATA.models.slice();
+  var EXEC = DATA.execution.models.slice();
+  var METRICS = DATA.planning.metrics.slice();
+
+  /* A planning row keeps its raw points and gains, per metric, a value
+     normalized to 0–100, plus the total score (the raw points added up). */
+  var PLAN = DATA.planning.models.map(function (m) {
+    var scores = {}, total = 0;
+    METRICS.forEach(function (met) {
+      var pts = m.points[met.key] || 0;
+      total += pts;
+      scores[met.key] = Math.round((pts / met.weight) * 100);
+    });
+    return { id: m.id, name: m.name, effort: m.effort, points: m.points, scores: scores, score: total };
+  });
+
   var SVG_NS = "http://www.w3.org/2000/svg";
   var THEME_KEY = "cros-theme";
 
@@ -20,6 +38,13 @@
     for (var k in attrs) {
       if (attrs[k] !== null && attrs[k] !== undefined) node.setAttribute(k, attrs[k]);
     }
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function html(name, className, text) {
+    var node = document.createElement(name);
+    if (className) node.className = className;
     if (text !== undefined) node.textContent = text;
     return node;
   }
@@ -65,6 +90,18 @@
     var ticks = [];
     for (var v = 0; v <= max + 1e-9; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
     return ticks;
+  }
+
+  /* A 0–100 axis window that holds every value with half a step of air,
+     snapped to the step, so the ticks land on round numbers. */
+  function niceDomain(values, step) {
+    var min = Math.min.apply(null, values), max = Math.max.apply(null, values);
+    var lo = Math.max(0, Math.floor((min - step / 2) / step) * step);
+    var hi = Math.min(100, Math.ceil((max + step / 2) / step) * step);
+    if (hi <= lo) hi = lo + step;
+    var ticks = [];
+    for (var v = lo; v <= hi + 1e-9; v += step) ticks.push(v);
+    return { domain: [lo, hi], ticks: ticks };
   }
 
   /* ---------------- tooltip ---------------- */
@@ -365,55 +402,106 @@
     mount.appendChild(svg);
   }
 
+  /* ---------------- data access ---------------- */
+
+  /* One accessor for both tracks: a planning row answers a metric key
+     from its normalized scores, anything else comes off the row itself. */
+  function val(m, key) {
+    return m.scores && Object.prototype.hasOwnProperty.call(m.scores, key) ? m.scores[key] : m[key];
+  }
+  function desc(key) { return function (a, b) { return val(b, key) - val(a, key); }; }
+  function asc(key) { return function (a, b) { return val(a, key) - val(b, key); }; }
+  function maxOf(list, key) { return Math.max.apply(null, list.map(function (m) { return val(m, key); })); }
+  function minBy(list, key) {
+    return list.reduce(function (a, b) { return val(b, key) < val(a, key) ? b : a; });
+  }
+  function maxBy(list, key) {
+    return list.reduce(function (a, b) { return val(b, key) > val(a, key) ? b : a; });
+  }
+  function metricByKey(key) {
+    return METRICS.filter(function (met) { return met.key === key; })[0] || null;
+  }
+  function effortLabel(m) { return m.effort + " effort"; }
+  function pointsLabel(m, met) { return m.points[met.key] + " of " + met.weight + " points"; }
+
+  function modelCount() {
+    var ids = {};
+    EXEC.forEach(function (m) { ids[m.id] = true; });
+    PLAN.forEach(function (m) { ids[m.id] = true; });
+    return Object.keys(ids).length;
+  }
+
   /* ---------------- page content ---------------- */
 
-  function byScore(a, b) { return b.score - a.score; }
-  function maxOf(key) { return Math.max.apply(null, MODELS.map(function (m) { return m[key]; })); }
-  function minBy(key) {
-    return MODELS.reduce(function (a, b) { return b[key] < a[key] ? b : a; });
-  }
-  function maxBy(key) {
-    return MODELS.reduce(function (a, b) { return b[key] > a[key] ? b : a; });
-  }
-
-  function effortLabel(m) { return m.effort + " effort"; }
-
   function renderStats() {
-    var best = maxBy("score"), fastest = minBy("time"), cheapest = minBy("cost");
+    var sameSet = EXEC.length === PLAN.length && PLAN.every(function (p) {
+      return EXEC.some(function (e) { return e.id === p.id; });
+    });
+    var tasks = DATA.execution.tasks + DATA.planning.tasks;
+
     var stats = [
-      { label: "Models evaluated", value: String(MODELS.length), sub: DATA.meta.tasks + " task in the suite so far" },
-      { label: "Top CROS score", value: num(best.score), sub: best.name + " · " + effortLabel(best) },
-      { label: "Fastest run", value: num(fastest.time), sub: fastest.name + " · time index" },
-      { label: "Lowest cost", value: num(cheapest.cost), sub: cheapest.name + " · cost index" },
+      { label: "Models evaluated", value: String(modelCount()),
+        sub: sameSet ? "the same models on both tracks" : EXEC.length + " execution · " + PLAN.length + " planning" },
+      { label: "Tasks in the suite", value: String(tasks),
+        sub: DATA.execution.tasks + " execution · " + DATA.planning.tasks + " planning" },
     ];
+    if (EXEC.length) {
+      var bestExec = maxBy(EXEC, "score");
+      stats.push({ label: "Top execution score", value: num(bestExec.score), sub: bestExec.name + " · " + effortLabel(bestExec) });
+    }
+    if (PLAN.length) {
+      var bestPlan = maxBy(PLAN, "score");
+      stats.push({ label: "Top planning score", value: num(bestPlan.score), sub: bestPlan.name + " · " + effortLabel(bestPlan) });
+    }
+    if (EXEC.length) {
+      var fastest = minBy(EXEC, "time"), cheapest = minBy(EXEC, "cost");
+      stats.push({ label: "Fastest run", value: num(fastest.time), sub: fastest.name + " · time index" });
+      stats.push({ label: "Lowest cost", value: num(cheapest.cost), sub: cheapest.name + " · cost index" });
+    }
+
     var host = document.getElementById("kpis");
     host.textContent = "";
     stats.forEach(function (s) {
-      var d = document.createElement("div");
-      d.className = "stat";
-      var l = document.createElement("div"); l.className = "label"; l.textContent = s.label;
-      var v = document.createElement("div"); v.className = "value"; v.textContent = s.value;
-      var b = document.createElement("div"); b.className = "sub"; b.textContent = s.sub;
-      d.appendChild(l); d.appendChild(v); d.appendChild(b);
+      var d = html("div", "stat");
+      d.appendChild(html("div", "label", s.label));
+      d.appendChild(html("div", "value", s.value));
+      d.appendChild(html("div", "sub", s.sub));
       host.appendChild(d);
     });
   }
 
-  function renderHighlights() {
-    var host = document.getElementById("highlights");
+  /* rows: [{ term, parts }], a part is [text, bold] or a plain string */
+  function renderDefinitions(hostId, rows) {
+    var host = document.getElementById(hostId);
     if (!host) return;
+    host.textContent = "";
+    rows.forEach(function (row) {
+      var wrap = document.createElement("div");
+      var dd = document.createElement("dd");
+      row.parts.forEach(function (part) {
+        if (typeof part === "string") { dd.appendChild(document.createTextNode(part)); return; }
+        if (part[1]) dd.appendChild(html("strong", null, part[0]));
+        else dd.appendChild(document.createTextNode(part[0]));
+      });
+      wrap.appendChild(html("dt", null, row.term));
+      wrap.appendChild(dd);
+      host.appendChild(wrap);
+    });
+  }
 
-    var ranked = MODELS.slice().sort(byScore);
+  function renderExecutionHighlights() {
+    if (!EXEC.length) return;
+    var ranked = EXEC.slice().sort(desc("score"));
     var best = ranked[0], second = ranked[1];
-    var cheapest = minBy("cost"), priciest = maxBy("cost");
-    var fastest = minBy("time"), slowest = maxBy("time");
+    var cheapest = minBy(EXEC, "cost"), priciest = maxBy(EXEC, "cost");
+    var fastest = minBy(EXEC, "time"), slowest = maxBy(EXEC, "time");
 
     function times(a, b) {
       var r = a / b;
       return (r >= 10 ? Math.round(r) : Math.round(r * 10) / 10) + "×";
     }
 
-    var rows = [
+    renderDefinitions("highlights", [
       {
         term: "Top score",
         parts: [
@@ -447,128 +535,244 @@
             times(slowest.time, fastest.time) + ".", false],
         ],
       },
-    ];
+    ]);
+  }
 
+  function renderPlanningHighlights() {
+    if (!PLAN.length) return;
+    var ranked = PLAN.slice().sort(desc("score"));
+    var best = ranked[0], second = ranked[1];
+    var rows = [{
+      term: "Top score",
+      parts: [
+        [best.name, true], [" leads at ", false], [num(best.score), true],
+        second ? ", " + num(best.score - second.score) + " ahead of " + second.name + "." : ".",
+      ],
+    }];
+
+    var acc = metricByKey("accuracy");
+    if (acc) {
+      var a = maxBy(PLAN, acc.key);
+      rows.push({
+        term: "Most accurate",
+        parts: [
+          [a.name, true], [" has the most findings that survive a check against the code — ", false],
+          [num(val(a, acc.key)), true], [" (" + pointsLabel(a, acc) + ").", false],
+        ],
+      });
+    }
+
+    var hal = metricByKey("hallucination");
+    if (hal) {
+      var h = maxBy(PLAN, hal.key);
+      rows.push({
+        term: "Fewest invented claims",
+        parts: [
+          [h.name, true], [" scores ", false], [num(val(h, hal.key)), true],
+          [" on hallucination, where a high value means little or nothing was made up.", false],
+        ],
+      });
+    }
+
+    var widest = METRICS.map(function (met) {
+      var hi = maxBy(PLAN, met.key), lo = minBy(PLAN, met.key);
+      return { met: met, hi: hi, lo: lo, spread: val(hi, met.key) - val(lo, met.key) };
+    }).sort(function (a, b) { return b.spread - a.spread; })[0];
+    if (widest) {
+      rows.push({
+        term: "Widest gap",
+        parts: [
+          [widest.met.label, true], [" separates the field most — ", false],
+          [num(widest.spread) + " points", true],
+          [" between " + widest.hi.name + " (" + num(val(widest.hi, widest.met.key)) + ") and " +
+            widest.lo.name + " (" + num(val(widest.lo, widest.met.key)) + ").", false],
+        ],
+      });
+    }
+
+    renderDefinitions("highlights-planning", rows);
+  }
+
+  /* One small bar chart per metric, built from the data so a new metric
+     needs no HTML change. */
+  function renderMetricCards() {
+    var host = document.getElementById("metric-grid");
+    if (!host) return;
     host.textContent = "";
-    rows.forEach(function (row) {
-      var wrap = document.createElement("div");
-      var dt = document.createElement("dt");
-      dt.textContent = row.term;
-      var dd = document.createElement("dd");
-      row.parts.forEach(function (part) {
-        if (typeof part === "string") { dd.appendChild(document.createTextNode(part)); return; }
-        if (part[1]) {
-          var strong = document.createElement("strong");
-          strong.textContent = part[0];
-          dd.appendChild(strong);
-        } else {
-          dd.appendChild(document.createTextNode(part[0]));
-        }
-      });
-      wrap.appendChild(dt);
-      wrap.appendChild(dd);
-      host.appendChild(wrap);
+    METRICS.forEach(function (met) {
+      var card = html("div", "card card-metric");
+      var head = html("div", "card-head");
+      var h3 = html("h3", null, met.label + " ");
+      h3.appendChild(html("span", "weight", met.weight + " of 100 points"));
+      head.appendChild(h3);
+      head.appendChild(html("p", null, met.about));
+      var mount = html("div", "chart");
+      mount.id = "chart-metric-" + met.key;
+      var foot = html("div", "card-foot");
+      foot.appendChild(html("span", null, "Normalized to 100 · higher is better"));
+      card.appendChild(head);
+      card.appendChild(mount);
+      card.appendChild(foot);
+      host.appendChild(card);
     });
   }
 
-  /* ---------------- leaderboard table ---------------- */
+  function renderMetricList() {
+    var host = document.getElementById("metric-list");
+    if (host) {
+      host.textContent = "";
+      METRICS.forEach(function (met) {
+        var li = document.createElement("li");
+        li.appendChild(html("strong", null, met.label));
+        li.appendChild(document.createTextNode(" (" + met.weight + " points) — " + met.about));
+        host.appendChild(li);
+      });
+    }
+    var line = document.getElementById("weights-line");
+    if (line) {
+      var total = 0;
+      line.textContent = METRICS.map(function (met) {
+        total += met.weight;
+        return met.label + " " + met.weight;
+      }).join(" · ") + " — " + total + " in all.";
+    }
+  }
 
-  var sortState = { key: "score", dir: "desc" };
+  /* ---------------- leaderboard tables ---------------- */
 
-  function renderTable() {
-    var tbody = document.getElementById("leaderboard-body");
+  function barCell(key, max) {
+    return function (m) {
+      var td = html("td", "metric");
+      var cell = html("div", "metric-cell");
+      var bar = html("div", "metric-bar");
+      var fill = document.createElement("span");
+      fill.style.width = Math.max(2, (val(m, key) / max) * 100) + "%";
+      bar.appendChild(fill);
+      cell.appendChild(bar);
+      cell.appendChild(html("span", "metric-value", num(val(m, key))));
+      td.appendChild(cell);
+      return td;
+    };
+  }
+
+  function pointsCell(met) {
+    return function (m) {
+      var td = html("td", "num score-cell");
+      td.appendChild(html("span", "norm", num(val(m, met.key))));
+      td.appendChild(html("span", "pts", m.points[met.key] + "/" + met.weight));
+      return td;
+    };
+  }
+
+  /* spec: { table, rows, rankBy, columns: [{ key, dir, render, label? }] }
+     A column with a label gets its heading added to the table; the rest
+     are declared in the HTML. */
+  function makeTable(spec) {
+    var table = document.querySelector(spec.table);
+    if (!table) return;
+    var tbody = table.querySelector("tbody");
+    var headRow = table.querySelector("thead tr");
+    var state = { key: spec.rankBy, dir: "desc" };
+
     var rankOf = {};
-    MODELS.slice().sort(byScore).forEach(function (m, i) { rankOf[m.id] = i + 1; });
+    spec.rows.slice().sort(desc(spec.rankBy)).forEach(function (m, i) { rankOf[m.id] = i + 1; });
 
-    var maxScore = 100, maxTime = maxOf("time"), maxCost = maxOf("cost");
-    var rows = MODELS.slice().sort(function (a, b) {
-      var d = a[sortState.key] < b[sortState.key] ? -1 : a[sortState.key] > b[sortState.key] ? 1 : 0;
-      if (sortState.key === "name") d = a.name.localeCompare(b.name);
-      return sortState.dir === "desc" ? -d : d;
+    spec.columns.forEach(function (col) {
+      if (!col.label) return;
+      var th = html("th", "num");
+      th.setAttribute("scope", "col");
+      th.setAttribute("data-key", col.key);
+      var btn = html("button", "sort-btn", col.label + " ");
+      btn.type = "button";
+      var arrow = html("span", "arrow", "↓");
+      arrow.setAttribute("aria-hidden", "true");
+      btn.appendChild(arrow);
+      th.appendChild(btn);
+      headRow.appendChild(th);
     });
 
-    tbody.textContent = "";
-    rows.forEach(function (m) {
-      var tr = document.createElement("tr");
+    function defaultDir(key) {
+      if (key === "name") return "asc";
+      var col = spec.columns.filter(function (c) { return c.key === key; })[0];
+      return (col && col.dir) || "desc";
+    }
 
-      var rank = document.createElement("td");
-      rank.className = "rank";
-      rank.textContent = rankOf[m.id];
-      tr.appendChild(rank);
-
-      var name = document.createElement("td");
-      name.className = "model";
-      name.textContent = m.name;
-      tr.appendChild(name);
-
-      var eff = document.createElement("td");
-      eff.className = "effort";
-      var badge = document.createElement("span");
-      badge.className = "badge";
-      badge.textContent = m.effort;
-      eff.appendChild(badge);
-      tr.appendChild(eff);
-
-      [["score", maxScore], ["time", maxTime], ["cost", maxCost]].forEach(function (pair) {
-        var td = document.createElement("td");
-        td.className = "metric";
-        var cell = document.createElement("div");
-        cell.className = "metric-cell";
-        var bar = document.createElement("div");
-        bar.className = "metric-bar";
-        var fill = document.createElement("span");
-        fill.style.width = Math.max(2, (m[pair[0]] / pair[1]) * 100) + "%";
-        bar.appendChild(fill);
-        var val = document.createElement("span");
-        val.className = "metric-value";
-        val.textContent = num(m[pair[0]]);
-        cell.appendChild(bar);
-        cell.appendChild(val);
-        td.appendChild(cell);
-        tr.appendChild(td);
+    function render() {
+      var rows = spec.rows.slice().sort(function (a, b) {
+        var d = state.key === "name" ? a.name.localeCompare(b.name) : val(a, state.key) - val(b, state.key);
+        return state.dir === "desc" ? -d : d;
       });
 
-      tbody.appendChild(tr);
-    });
+      tbody.textContent = "";
+      rows.forEach(function (m) {
+        var tr = document.createElement("tr");
+        tr.appendChild(html("td", "rank", String(rankOf[m.id])));
+        tr.appendChild(html("td", "model", m.name));
+        var eff = html("td", "effort");
+        eff.appendChild(html("span", "badge", m.effort));
+        tr.appendChild(eff);
+        spec.columns.forEach(function (col) { tr.appendChild(col.render(m)); });
+        tbody.appendChild(tr);
+      });
 
-    document.querySelectorAll("th[data-key]").forEach(function (th) {
-      var active = th.getAttribute("data-key") === sortState.key;
-      if (active) th.setAttribute("aria-sort", sortState.dir === "desc" ? "descending" : "ascending");
-      else th.removeAttribute("aria-sort");
-      var arrow = th.querySelector(".arrow");
-      if (arrow) arrow.textContent = active ? (sortState.dir === "desc" ? "↓" : "↑") : "↓";
-    });
-  }
+      table.querySelectorAll("th[data-key]").forEach(function (th) {
+        var active = th.getAttribute("data-key") === state.key;
+        if (active) th.setAttribute("aria-sort", state.dir === "desc" ? "descending" : "ascending");
+        else th.removeAttribute("aria-sort");
+        var arrow = th.querySelector(".arrow");
+        if (arrow) arrow.textContent = active ? (state.dir === "desc" ? "↓" : "↑") : "↓";
+      });
+    }
 
-  function wireTable() {
-    document.querySelectorAll("th[data-key] .sort-btn").forEach(function (btn) {
+    table.querySelectorAll("th[data-key] .sort-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var key = btn.parentElement.getAttribute("data-key");
-        if (sortState.key === key) {
-          sortState.dir = sortState.dir === "desc" ? "asc" : "desc";
+        if (state.key === key) {
+          state.dir = state.dir === "desc" ? "asc" : "desc";
         } else {
-          sortState.key = key;
-          sortState.dir = key === "name" ? "asc" : key === "score" ? "desc" : "asc";
+          state.key = key;
+          state.dir = defaultDir(key);
         }
-        renderTable();
+        render();
       });
+    });
+
+    render();
+  }
+
+  function renderTables() {
+    makeTable({
+      table: "#table-execution", rows: EXEC, rankBy: "score",
+      columns: [
+        { key: "score", dir: "desc", render: barCell("score", 100) },
+        { key: "time", dir: "asc", render: barCell("time", maxOf(EXEC, "time")) },
+        { key: "cost", dir: "asc", render: barCell("cost", maxOf(EXEC, "cost")) },
+      ],
+    });
+    makeTable({
+      table: "#table-planning", rows: PLAN, rankBy: "score",
+      columns: [{ key: "score", dir: "desc", render: barCell("score", 100) }].concat(
+        METRICS.map(function (met) {
+          return { key: met.key, dir: "desc", label: met.short || met.label, render: pointsCell(met) };
+        })
+      ),
     });
   }
 
   /* ---------------- charts ---------------- */
 
-  function drawCharts() {
-    var scoreItems = MODELS.slice().sort(byScore).map(function (m) {
+  function drawExecutionCharts() {
+    var scoreItems = EXEC.slice().sort(desc("score")).map(function (m) {
       return { label: m.name, value: m.score, meta: effortLabel(m) };
     });
     barChart(document.getElementById("chart-score"), {
       items: scoreItems, max: 100, ticks: [0, 25, 50, 75, 100], rowH: 48,
       unit: "out of 100", valueSuffix: " / 100",
-      ariaLabel: "CROS score by model, higher is better, out of 100",
-      axisLabel: "CROS score (0–100)",
+      ariaLabel: "CROS Execution score by model, higher is better, out of 100",
+      axisLabel: "CROS Execution score (0–100)",
     });
 
-    var timeItems = MODELS.slice().sort(function (a, b) { return a.time - b.time; }).map(function (m) {
+    var timeItems = EXEC.slice().sort(asc("time")).map(function (m) {
       return { label: m.name, value: m.time, meta: effortLabel(m) };
     });
     barChart(document.getElementById("chart-time"), {
@@ -578,8 +782,8 @@
       axisLabel: "Time index (lower is better)",
     });
 
-    var costMax = Math.ceil(maxOf("cost") / 25) * 25;
-    var costItems = MODELS.slice().sort(function (a, b) { return a.cost - b.cost; }).map(function (m) {
+    var costMax = Math.ceil(maxOf(EXEC, "cost") / 25) * 25;
+    var costItems = EXEC.slice().sort(asc("cost")).map(function (m) {
       return { label: m.name, value: m.cost, meta: effortLabel(m) };
     });
     barChart(document.getElementById("chart-cost"), {
@@ -592,7 +796,7 @@
 
     var yTicks = [84, 88, 92, 96, 100];
     scatter(document.getElementById("chart-cost-quality"), {
-      points: MODELS.map(function (m) {
+      points: EXEC.map(function (m) {
         return {
           label: m.name, x: m.cost, y: m.score,
           tipValue: num(m.score) + " / 100",
@@ -603,12 +807,12 @@
       xScale: "log", xDomain: [0.7, 150], xTicks: [1, 3, 10, 30, 100],
       yDomain: [84, 100], yTicks: yTicks,
       xLabel: "Cost index — log scale (lower is better) →",
-      yLabel: "CROS score →",
-      ariaLabel: "CROS score versus normalized cost for each model",
+      yLabel: "Execution score →",
+      ariaLabel: "CROS Execution score versus normalized cost for each model",
     });
 
     scatter(document.getElementById("chart-time-quality"), {
-      points: MODELS.map(function (m) {
+      points: EXEC.map(function (m) {
         return {
           label: m.name, x: m.time, y: m.score,
           tipValue: num(m.score) + " / 100",
@@ -619,9 +823,68 @@
       xScale: "linear", xDomain: [0, 110], xTicks: [0, 25, 50, 75, 100],
       yDomain: [84, 100], yTicks: yTicks,
       xLabel: "Time index (lower is better) →",
-      yLabel: "CROS score →",
-      ariaLabel: "CROS score versus normalized time spent for each model",
+      yLabel: "Execution score →",
+      ariaLabel: "CROS Execution score versus normalized time spent for each model",
     });
+  }
+
+  function drawPlanningCharts() {
+    var totalItems = PLAN.slice().sort(desc("score")).map(function (m) {
+      return { label: m.name, value: m.score, meta: effortLabel(m) };
+    });
+    barChart(document.getElementById("chart-planning"), {
+      items: totalItems, max: 100, ticks: [0, 25, 50, 75, 100], rowH: 48,
+      unit: "out of 100", valueSuffix: " / 100",
+      ariaLabel: "CROS Planning score by model, higher is better, out of 100",
+      axisLabel: "CROS Planning score (0–100)",
+    });
+
+    METRICS.forEach(function (met) {
+      var mount = document.getElementById("chart-metric-" + met.key);
+      if (!mount) return;
+      var items = PLAN.slice().sort(desc(met.key)).map(function (m) {
+        return { label: m.name, value: val(m, met.key), meta: pointsLabel(m, met) + " · " + effortLabel(m) };
+      });
+      barChart(mount, {
+        items: items, max: 100, ticks: [0, 50, 100], rowH: 32,
+        unit: "out of 100", valueSuffix: " / 100",
+        ariaLabel: met.label + " by model, normalized to 100, higher is better",
+      });
+    });
+
+    /* the same model on both tracks, paired by id */
+    var both = PLAN.map(function (p) {
+      var e = EXEC.filter(function (m) { return m.id === p.id; })[0];
+      return e ? { plan: p, exec: e } : null;
+    }).filter(Boolean);
+    var mount = document.getElementById("chart-plan-exec");
+    if (!mount || !both.length) return;
+
+    var xDom = niceDomain(both.map(function (b) { return b.exec.score; }), 4);
+    var yDom = niceDomain(both.map(function (b) { return b.plan.score; }), 10);
+    scatter(mount, {
+      points: both.map(function (b) {
+        var eff = b.plan.effort === b.exec.effort
+          ? effortLabel(b.plan)
+          : b.exec.effort + " / " + b.plan.effort + " effort";
+        return {
+          label: b.plan.name, x: b.exec.score, y: b.plan.score,
+          tipValue: num(b.plan.score) + " planning",
+          tipMeta: "Execution " + num(b.exec.score) + " · " + eff,
+          aria: b.plan.name + ": planning score " + num(b.plan.score) + ", execution score " + num(b.exec.score),
+        };
+      }),
+      xScale: "linear", xDomain: xDom.domain, xTicks: xDom.ticks,
+      yDomain: yDom.domain, yTicks: yDom.ticks,
+      xLabel: "Execution score →",
+      yLabel: "Planning score →",
+      ariaLabel: "CROS Planning score versus CROS Execution score for each model",
+    });
+  }
+
+  function drawCharts() {
+    if (EXEC.length) drawExecutionCharts();
+    if (PLAN.length) drawPlanningCharts();
   }
 
   /* ---------------- theme ---------------- */
@@ -665,16 +928,20 @@
   }
 
   function boot() {
+    var tasks = DATA.execution.tasks + DATA.planning.tasks;
+
     setText("meta-updated", DATA.meta.updated);
     setText("meta-status", DATA.meta.status);
-    setText("meta-tasks", DATA.meta.tasks + (DATA.meta.tasks === 1 ? " task" : " tasks"));
-    setText("meta-models", MODELS.length + " models");
+    setText("meta-tasks", tasks + (tasks === 1 ? " task" : " tasks"));
+    setText("meta-models", modelCount() + " models");
     setText("footer-updated", DATA.meta.updated);
 
     renderStats();
-    renderHighlights();
-    wireTable();
-    renderTable();
+    renderExecutionHighlights();
+    renderPlanningHighlights();
+    renderMetricCards();
+    renderMetricList();
+    renderTables();
     drawCharts();
     wireTheme();
 
