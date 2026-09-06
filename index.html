@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CROS Benchmark — AI coding models on C, C++ and ROS work</title>
-<meta name="description" content="CROS is a benchmark for AI coding models on short, complex software engineering tasks across C, C++, ROS1/ROS2, robotics, testing and debugging. Scores, time and cost, side by side.">
+<title>CROS Benchmark — AI coding models on C, C++, ROS and Linux work</title>
+<meta name="description" content="CROS is a benchmark for AI coding models on short, complex software engineering tasks across C, C++, ROS1/ROS2, robotics, Linux, old codebases, testing and debugging. Two tracks: execution (score, time, cost) and planning &amp; codebase analysis (six graded metrics).">
 <meta name="color-scheme" content="light dark">
 <meta property="og:title" content="CROS Benchmark">
-<meta property="og:description" content="AI coding models measured on short, complex C, C++ and ROS engineering tasks — quality, time and cost.">
+<meta property="og:description" content="AI coding models measured on short, complex C, C++, ROS and Linux engineering tasks in real, old codebases — execution quality, time and cost, plus planning and codebase analysis.">
 <meta property="og:type" content="website">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/styles.css">
@@ -32,10 +32,11 @@
         <rect x="14.5" y="1" width="4.5" height="18" rx="1.5" fill="currentColor"/>
       </svg>
       <span>CROS Benchmark</span>
-      <span class="brand-sub">C · C++ · ROS</span>
+      <span class="brand-sub">C · C++ · ROS · Linux</span>
     </a>
     <nav class="nav" aria-label="Sections">
-      <a href="#scores">Scores</a>
+      <a href="#scores">Execution</a>
+      <a href="#planning">Planning</a>
       <a href="#tradeoffs">Trade-offs</a>
       <a href="#efficiency">Time &amp; cost</a>
       <a href="#leaderboard">Leaderboard</a>
@@ -63,13 +64,15 @@
   <section class="hero">
     <div class="wrap">
       <p class="eyebrow">Independent evaluation · Work in progress</p>
-      <h1>How well do AI models handle real C, C++ and ROS engineering?</h1>
+      <h1>How well do AI models handle real C, C++, ROS and Linux engineering?</h1>
       <p class="lede">
         CROS scores coding models on short but genuinely hard software engineering tasks —
         the kind a robotics engineer finishes in under two hours: C and C++ work, ROS1 and
-        ROS2 packages, tests, debugging, and the messy parts of a real repository.
-        Each model is measured three ways: how good the result is, how long it took, and
-        what it cost.
+        ROS2 packages, Linux services and build chains, tests, debugging, and the messy parts
+        of old, long-lived codebases. Two tracks: <strong>execution</strong> measures the
+        delivered work, how long it took and what it cost; <strong>planning &amp; analysis</strong>
+        measures how well a model understands an unfamiliar codebase and reasons about a plan
+        before any code is written.
       </p>
       <div class="chips">
         <span class="chip"><span class="dot"></span><span id="meta-status">Preliminary</span></span>
@@ -87,14 +90,14 @@
   <section class="section" id="scores">
     <div class="wrap">
       <div class="section-head">
-        <p class="eyebrow">Quality</p>
-        <h2>CROS score</h2>
-        <p>How complete and correct the delivered work is, graded from 0 to 100. Higher is better.</p>
+        <p class="eyebrow">Execution</p>
+        <h2>CROS Execution score</h2>
+        <p>The model does the task. How complete and correct the delivered work is, graded from 0 to 100. Higher is better.</p>
       </div>
       <div class="grid-lead">
         <div class="card">
           <div class="card-head">
-            <h3>CROS score by model</h3>
+            <h3>Execution score by model</h3>
             <p>All bars start at zero, so the visible gap is the real gap.</p>
           </div>
           <div class="chart" id="chart-score"></div>
@@ -114,14 +117,95 @@
     </div>
   </section>
 
+  <section class="section" id="planning">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Planning &amp; codebase analysis</p>
+        <h2>CROS Planning score</h2>
+        <p>
+          The model reads an unfamiliar, old codebase and reasons about an implementation plan
+          against it — before any code is written. Six graded metrics, each normalized to 100,
+          add up to one score out of 100. Higher is better.
+        </p>
+      </div>
+      <div class="grid-lead">
+        <div class="card">
+          <div class="card-head">
+            <h3>Planning score by model</h3>
+            <p>The points earned across the six metrics, added up. All bars start at zero.</p>
+          </div>
+          <div class="chart" id="chart-planning"></div>
+          <div class="card-foot">
+            <span>Higher is better · 0–100</span>
+            <a href="#leaderboard">See every metric in the table ↓</a>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3>What stands out</h3>
+            <p>Read straight off the current results.</p>
+          </div>
+          <dl class="highlights" id="highlights-planning"></dl>
+        </div>
+      </div>
+
+      <div class="section-sub">
+        <h3>The six metrics</h3>
+        <p>
+          Each metric is normalized to 100 so they all read on one scale. The points it
+          carries in the total are shown beside its name; hover a bar for the raw points.
+        </p>
+      </div>
+      <div class="grid-3" id="metric-grid"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3>Planning vs execution</h3>
+            <p>The same model on both tracks. Top-right is best at both; a point far from the diagonal is a model much better at one than the other.</p>
+          </div>
+          <div class="chart" id="chart-plan-exec"></div>
+          <div class="card-foot">
+            <span>Top-right is better</span>
+            <a href="#leaderboard">Table ↓</a>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3>How the score is built</h3>
+            <p>What each number on this track means.</p>
+          </div>
+          <dl class="highlights">
+            <div>
+              <dt>Points</dt>
+              <dd>Each metric carries a fixed number of points and a report earns some of them. <strong id="weights-line">—</strong></dd>
+            </div>
+            <div>
+              <dt>Normalized value</dt>
+              <dd>Points earned ÷ points available × 100, so every metric reads on the same 0–100 scale.</dd>
+            </div>
+            <div>
+              <dt>Planning score</dt>
+              <dd>The raw points added up, 0 to 100. It is a weighted total, not an average of the normalized values.</dd>
+            </div>
+            <div>
+              <dt>Grading</dt>
+              <dd>Every claim in a report is checked against the actual code before points are given. A confident claim that turns out to be invented costs hallucination points; a real defect the report never mentions costs efficacy points.</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="tradeoffs">
     <div class="wrap">
       <div class="section-head">
         <p class="eyebrow">Trade-offs</p>
-        <h2>What the score costs you</h2>
+        <h2>What the execution score costs you</h2>
         <p>
-          A high score is only half the story. These two views put quality against what you
-          pay for it — in money and in waiting. The best place to be is the top-left corner.
+          A high score is only half the story. These two views put execution quality against what
+          you pay for it — in money and in waiting. The best place to be is the top-left corner.
         </p>
       </div>
       <div class="grid-2">
@@ -156,7 +240,7 @@
       <div class="section-head">
         <p class="eyebrow">Efficiency</p>
         <h2>Time and cost</h2>
-        <p>Both are normalized indices with no unit — they only mean something next to each other. Lower is better in both.</p>
+        <p>Measured on the execution track. Both are normalized indices with no unit — they only mean something next to each other. Lower is better in both.</p>
       </div>
       <div class="grid-2">
         <div class="card">
@@ -190,28 +274,56 @@
       <div class="section-head">
         <p class="eyebrow">All results</p>
         <h2>Leaderboard</h2>
-        <p>Every number on this page, in one place. Click a column heading to sort.</p>
+        <p>Every number on this page, in one place — one table per track. Click a column heading to sort.</p>
       </div>
-      <div class="table-wrap">
-        <table>
-          <caption class="visually-hidden">CROS benchmark results: score, time index and cost index for each model.</caption>
-          <thead>
-            <tr>
-              <th scope="col">Rank</th>
-              <th scope="col" data-key="name"><button class="sort-btn" type="button">Model <span class="arrow" aria-hidden="true">↓</span></button></th>
-              <th scope="col">Effort</th>
-              <th scope="col" class="num" data-key="score"><button class="sort-btn" type="button">CROS score <span class="arrow" aria-hidden="true">↓</span></button></th>
-              <th scope="col" class="num" data-key="time"><button class="sort-btn" type="button">Time index <span class="arrow" aria-hidden="true">↓</span></button></th>
-              <th scope="col" class="num" data-key="cost"><button class="sort-btn" type="button">Cost index <span class="arrow" aria-hidden="true">↓</span></button></th>
-            </tr>
-          </thead>
-          <tbody id="leaderboard-body"></tbody>
-        </table>
+
+      <div class="table-block">
+        <h3 class="table-title">Execution</h3>
+        <div class="table-wrap">
+          <table id="table-execution">
+            <caption class="visually-hidden">CROS Execution results: score, time index and cost index for each model.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Rank</th>
+                <th scope="col" data-key="name"><button class="sort-btn" type="button">Model <span class="arrow" aria-hidden="true">↓</span></button></th>
+                <th scope="col">Effort</th>
+                <th scope="col" class="num" data-key="score"><button class="sort-btn" type="button">Execution score <span class="arrow" aria-hidden="true">↓</span></button></th>
+                <th scope="col" class="num" data-key="time"><button class="sort-btn" type="button">Time index <span class="arrow" aria-hidden="true">↓</span></button></th>
+                <th scope="col" class="num" data-key="cost"><button class="sort-btn" type="button">Cost index <span class="arrow" aria-hidden="true">↓</span></button></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="table-note">
+          Rank is by execution score and stays fixed when you sort by another column.
+          Score: higher is better. Time and cost: lower is better.
+        </p>
       </div>
-      <p class="table-note">
-        Rank is by CROS score and stays fixed when you sort by another column.
-        Score: higher is better. Time and cost: lower is better.
-      </p>
+
+      <div class="table-block">
+        <h3 class="table-title">Planning &amp; analysis</h3>
+        <div class="table-wrap">
+          <table id="table-planning" class="table-planning">
+            <caption class="visually-hidden">CROS Planning results: total score and each of the six metrics, normalized to 100, for each model.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Rank</th>
+                <th scope="col" data-key="name"><button class="sort-btn" type="button">Model <span class="arrow" aria-hidden="true">↓</span></button></th>
+                <th scope="col">Effort</th>
+                <th scope="col" class="num" data-key="score"><button class="sort-btn" type="button">Planning score <span class="arrow" aria-hidden="true">↓</span></button></th>
+                <!-- one heading per metric is added from the data -->
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="table-note">
+          Rank is by planning score and stays fixed when you sort by another column.
+          Every metric is normalized to 100 and shown over the points it came from. Higher is
+          better in every column, including hallucination, where a high value means few invented claims.
+        </p>
+      </div>
     </div>
   </section>
 
@@ -227,13 +339,15 @@
           <p>
             Every task is drawn from real development work and is meant to take a competent
             engineer under two hours. The suite covers C and C++, ROS1 and ROS2 packages,
-            robotics integration, writing and fixing tests, debugging existing code, and
-            the ordinary workflow around all of it — builds, dependencies, and repository
-            conventions.
+            robotics integration, Linux services, toolchains and deployment, writing and fixing
+            tests, debugging existing code, and old codebases that have outlived their original
+            authors — with the ordinary workflow around all of it: builds, dependencies, and
+            repository conventions.
           </p>
-          <h3>The three measures</h3>
+          <h3>Track 1 — Execution</h3>
+          <p>The model does the task. Three measures:</p>
           <ul>
-            <li><strong>CROS score</strong> — the quality of the delivered work, 0 to 100. Higher is better.</li>
+            <li><strong>CROS Execution score</strong> — the quality of the delivered work, 0 to 100. Higher is better.</li>
             <li><strong>Time index</strong> — how long the model took, normalized. Lower is better.</li>
             <li><strong>Cost index</strong> — what the run cost, normalized. Lower is better.</li>
           </ul>
@@ -241,24 +355,45 @@
             Time and cost are relative indices, not seconds or dollars. They are useful for
             comparing models with each other, not for predicting a bill.
           </p>
+          <h3>Track 2 — Planning &amp; codebase analysis</h3>
+          <p>
+            The model reads an unfamiliar codebase and reviews an implementation plan against it,
+            in read-only mode, without writing any code. Its report is then checked claim by claim
+            against the actual sources and graded on six metrics:
+          </p>
+          <ul id="metric-list"></ul>
+          <p>
+            Each metric is shown normalized to 100 (points earned ÷ points available). The
+            <strong>CROS Planning score</strong> is the raw points added up, 0 to 100.
+          </p>
         </div>
         <div class="prose">
+          <h3>The planning task so far</h3>
+          <p>
+            A read-only architecture review of a 90-step, 4,360-line implementation plan for a
+            new raid encounter in a long-lived C++ MMO: a Windows client, four Linux server
+            services, SQL migrations, CI gates and content tooling. The prompt asked for
+            non-feasible or blocking steps, architectural errors, pattern violations, breaking
+            changes and unplanned technical debt, delivered as an evaluation table, an analysis
+            table, a mitigation plan and corrective actions. Around sixty of the reports' claims
+            were verified against the code before grading.
+          </p>
           <h3>Effort settings</h3>
           <p>
             Models are run at the reasoning effort listed beside them. A different effort
-            setting moves all three numbers, so the label is part of the result — the same
+            setting moves every number, so the label is part of the result — the same
             model at a lower effort is a different row, not the same one.
           </p>
           <h3>Where this stands</h3>
           <div class="callout">
-            These are early results: one task, five models, one run each. Treat them as a
-            first signal, not a settled ranking. As tasks are added the scores will move,
-            and this page updates with them.
+            These are early results: one execution task and one planning task, five models,
+            one run each. Treat them as a first signal, not a settled ranking. As tasks are
+            added the scores will move, and this page updates with them.
           </div>
           <h3>Reproducing and contributing</h3>
           <p>
             The results shown here live in <code>assets/data.js</code> in the repository —
-            one entry per model. Corrections and additional runs are welcome through
+            one list per track, one entry per model. Corrections and additional runs are welcome through
             <a href="https://github.com/Alexanderis1/CROS-Benchmark" rel="noopener">the GitHub repo</a>.
           </p>
         </div>
